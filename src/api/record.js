@@ -109,3 +109,7 @@ export function recordUpdatePersonnelService(did, pid) {
         params: { did, pid }
     })
 }
+// 发送违规提醒邮件
+export const sendViolationReminderService = (reminderData) => {
+    return request.post('/record/sendReminder', reminderData)
+}

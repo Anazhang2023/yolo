@@ -46,13 +46,11 @@
           <span class="total-count">共 {{ total }} 条记录</span>
         </div>
 
-        <!-- 加载状态 -->
         <div v-if="loading" class="loading-container">
           <div class="loading-spinner"></div>
           <p>加载中...</p>
         </div>
 
-        <!-- 表格内容 -->
         <table v-else class="violation-table">
           <thead>
           <tr>
@@ -71,7 +69,7 @@
             <td>
               <span class="type-tag">{{ getViolationTypeName(item.vid) }}</span>
             </td>
-            <td>
+            <td class="personnel-cell">
               {{ item.personnelName || '未知人员' }}
               <span style="color:#999;font-size:12px;">(ID:{{ item.pid }})</span>
             </td>
@@ -82,15 +80,15 @@
               <button class="action-btn" title="查看详情" @click.stop="openDetailModal(item)">👁️</button>
               <button class="action-btn" title="修改记录" @click.stop="openEditModal(item)">✏️</button>
               <button class="action-btn" title="删除记录" @click.stop="confirmDelete(item)">🗑️</button>
+              <button class="action-btn email-btn" title="获取邮箱" @click.stop="getEmail(item)" :disabled="emailLoading === item.did">📧</button>
             </td>
           </tr>
           <tr v-if="currentPageData.length === 0 && !loading">
-            <td colspan="6" class="empty-data">暂无符合条件的违规记录</td>
+            <td colspan="7" class="empty-data">暂无符合条件的违规记录</td>
           </tr>
           </tbody>
         </table>
 
-        <!-- 分页 -->
         <div class="pagination-wrapper" v-if="total > 0">
           <div class="pagination">
             <button class="page-btn" @click="changePage(1)" :disabled="currentPage === 1">«</button>
@@ -111,7 +109,7 @@
         </div>
       </div>
 
-      <!-- 右侧信息区 - 基于全部数据统计 -->
+      <!-- 右侧信息区 -->
       <div class="sidebar">
         <div class="sidebar-card">
           <div class="card-title">
@@ -162,9 +160,7 @@
                 <div class="item-right">{{ allProcessedCount }}条 ({{ allProcessedPercentage }}%)</div>
               </div>
               <div class="distribution-total">
-                <div class="item-left">
-                  <strong>总计</strong>
-                </div>
+                <div class="item-left"><strong>总计</strong></div>
                 <div class="item-right"><strong>{{ allTotalCount }}条</strong></div>
               </div>
             </div>
@@ -173,7 +169,7 @@
       </div>
     </div>
 
-    <!-- 详情弹窗 -->
+    <!-- 详情弹窗（保持原样） -->
     <div class="detail-modal" v-if="detailVisible" @click.self="closeDetailModal">
       <div class="detail-content" @click.stop>
         <div class="detail-header">
@@ -239,7 +235,6 @@
               </option>
             </select>
           </div>
-
           <div class="form-item">
             <label>处理状态</label>
             <select v-model="editForm.status" class="form-input">
@@ -259,6 +254,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, computed, watch } from 'vue'
+import request from '@/utils/request'
 
 import {
   recordPageService,
@@ -278,14 +274,12 @@ const totalPages = ref(1)
 const typeList = ref([])
 const personnelList = ref([])
 
-// 当前页显示的数据
 const currentPageData = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value
   const end = start + pageSize.value
   return allRawData.value.slice(start, end)
 })
 
-// 全部数据（用于统计）
 const allRecordsForStats = ref([])
 
 const filters = reactive({
@@ -295,15 +289,11 @@ const filters = reactive({
   endDate: ''
 })
 
-// 类型分布（基于全部数据）
 const typeDistribution = ref([])
-
-// 状态统计（基于全部数据）
 const allPendingCount = ref(0)
 const allProcessedCount = ref(0)
 const allTotalCount = ref(0)
 
-// 百分比计算
 const allPendingPercentage = computed(() => {
   if (allTotalCount.value === 0) return 0
   return ((allPendingCount.value / allTotalCount.value) * 100).toFixed(1)
@@ -326,6 +316,8 @@ const editForm = reactive({
   status: null
 })
 
+const emailLoading = ref(null)
+
 const loadTypeList = async () => {
   try {
     const res = await typeGetAllService()
@@ -345,7 +337,6 @@ const loadPersonnelList = async () => {
   }
 }
 
-// 获取全部数据用于统计
 const fetchAllRecordsForStats = async () => {
   loadingStats.value = true
   try {
@@ -362,10 +353,8 @@ const fetchAllRecordsForStats = async () => {
     if (res?.code === 200) {
       allRecordsForStats.value = res.data.data || []
       allTotalCount.value = res.data.total || 0
-
       allPendingCount.value = allRecordsForStats.value.filter(i => i.status === 0).length
       allProcessedCount.value = allRecordsForStats.value.filter(i => i.status === 1).length
-
       calculateTypeDistributionFromAll()
     }
   } catch (e) {
@@ -375,7 +364,6 @@ const fetchAllRecordsForStats = async () => {
   }
 }
 
-// 基于全部数据计算类型分布
 const calculateTypeDistributionFromAll = () => {
   const colors = ['red', 'orange', 'green', 'blue', 'purple', 'gray']
   const map = new Map()
@@ -391,6 +379,26 @@ const calculateTypeDistributionFromAll = () => {
     percentage: allTotalCount.value === 0 ? 0 : ((count / allTotalCount.value) * 100).toFixed(1),
     color: colors[i % colors.length]
   })).sort((a, b) => b.count - a.count)
+}
+
+// 获取邮箱功能
+const getEmail = async (item) => {
+  emailLoading.value = item.did
+
+  try {
+    const res = await request.get(`/record/getEmailByRecord/${item.did}`)
+
+    if (res?.code === 200 && res?.data) {
+      alert(`📧 人员：${item.personnelName}\n邮箱：${res.data}`)
+    } else {
+      alert(`⚠️ 人员"${item.personnelName || '未知'}"未绑定邮箱`)
+    }
+  } catch (error) {
+    console.error('获取邮箱失败:', error)
+    alert('获取邮箱失败，请稍后重试')
+  } finally {
+    emailLoading.value = null
+  }
 }
 
 const openEditModal = async (item) => {
@@ -480,7 +488,6 @@ const fetchRecords = async () => {
     const res = await recordPageService(params)
     if (res?.code === 200) {
       const rawData = res.data.data || []
-      // 按创建时间升序排序（旧的在前，新的在后）
       const sortedData = [...rawData].sort((a, b) => {
         return new Date(a.createdAt) - new Date(b.createdAt)
       })
@@ -506,13 +513,17 @@ const openDetailModal = (item) => {
   detailVisible.value = true
   imageError.value = false
 }
-const closeDetailModal = () => detailVisible.value = false
+
+const closeDetailModal = () => {
+  detailVisible.value = false
+}
 
 const getImageUrl = (path) => {
   if (!path) return ''
   if (path.startsWith('http')) return path
   return `/image/result-image?path=${encodeURIComponent(path)}`
 }
+
 const handleImageError = () => imageError.value = true
 
 const getViolationTypeName = (vid) => {
@@ -546,20 +557,14 @@ const confirmDelete = (item) => {
   handleDelete(item.did)
 }
 
-// 修复删除函数 - 只要请求成功就认为删除成功
 const handleDelete = async (did) => {
   if (!confirm(`确定删除 #${did}？`)) return
 
   try {
     await recordDeleteService(did)
-    // 执行到这里说明请求成功，删除成功
     alert('删除成功')
-
-    // 刷新数据
     await fetchRecords()
     await fetchAllRecordsForStats()
-
-    // 如果当前页没有数据了，且不是第一页，自动跳转到上一页
     if (currentPageData.value.length === 0 && currentPage.value > 1) {
       currentPage.value--
     }
@@ -571,12 +576,29 @@ const handleDelete = async (did) => {
 
 onMounted(() => {
   loadTypeList()
+  loadPersonnelList()
   fetchRecords()
   fetchAllRecordsForStats()
 })
 </script>
 
 <style scoped>
+.email-btn {
+  background: #fff;
+  transition: all 0.2s ease;
+}
+
+.email-btn:hover:not(:disabled) {
+  background: #e6f7ff;
+  color: #1890ff;
+  transform: scale(1.05);
+}
+
+.email-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -599,17 +621,20 @@ onMounted(() => {
   border-radius: 8px;
   margin-bottom: 16px;
 }
+
 .filter-left {
   display: flex;
   gap: 12px;
   align-items: center;
 }
+
 .filter-select, .filter-input {
   padding: 8px 12px;
   border: 1px solid #e5e7eb;
   border-radius: 6px;
   outline: none;
 }
+
 .btn-header {
   padding: 8px 16px;
   border: 1px solid #e5e7eb;
@@ -617,18 +642,21 @@ onMounted(() => {
   background: #fff;
   cursor: pointer;
 }
+
 .search-box {
   display: flex;
   border: 1px solid #e5e7eb;
   border-radius: 6px;
   overflow: hidden;
 }
+
 .search-box input {
   padding: 8px 12px;
   border: none;
   outline: none;
   width: 200px;
 }
+
 .search-btn {
   padding: 8px 12px;
   border: none;
@@ -641,11 +669,13 @@ onMounted(() => {
   grid-template-columns: 2fr 1fr;
   gap: 16px;
 }
+
 .table-section {
   background: #fff;
   border-radius: 8px;
   overflow: hidden;
 }
+
 .section-header {
   display: flex;
   justify-content: space-between;
@@ -657,22 +687,26 @@ onMounted(() => {
   width: 100%;
   border-collapse: collapse;
 }
+
 .violation-table th, .violation-table td {
   padding: 12px 24px;
   text-align: left;
   border-bottom: 1px solid #f0f0f0;
 }
+
 .type-tag {
   padding: 2px 8px;
   background: #f5f5f5;
   border-radius: 4px;
   font-size: 12px;
 }
+
 .status-tag {
   padding: 2px 8px;
   border-radius: 4px;
   font-size: 12px;
 }
+
 .status-tag.pending { background: #fef3c7; color: #d97706; }
 .status-tag.processed { background: #d1fae5; color: #047857; }
 
@@ -680,6 +714,7 @@ onMounted(() => {
   display: flex;
   gap: 6px;
 }
+
 .action-btn {
   width: 32px;
   height: 32px;
@@ -688,6 +723,7 @@ onMounted(() => {
   border-radius: 4px;
   cursor: pointer;
 }
+
 .action-btn:hover {
   background: #f0f7ff;
   color: #1677ff;
@@ -702,6 +738,7 @@ onMounted(() => {
 .pagination-wrapper {
   border-top: 1px solid #f0f0f0;
 }
+
 .pagination {
   display: flex;
   justify-content: center;
@@ -712,6 +749,7 @@ onMounted(() => {
   overflow-x: auto;
   white-space: nowrap;
 }
+
 .page-btn {
   width: 32px;
   height: 32px;
@@ -721,6 +759,7 @@ onMounted(() => {
   cursor: pointer;
   flex-shrink: 0;
 }
+
 .page-btn.active {
   background: #1677ff;
   color: #fff;
@@ -731,6 +770,7 @@ onMounted(() => {
   border-radius: 8px;
   padding: 16px;
 }
+
 .card-title {
   font-weight: 600;
   padding-bottom: 8px;
@@ -740,6 +780,7 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
 }
+
 .stat-badge {
   font-size: 12px;
   font-weight: normal;
@@ -748,11 +789,13 @@ onMounted(() => {
   border-radius: 4px;
   color: #666;
 }
+
 .distribution-item {
   display: flex;
   justify-content: space-between;
   margin-bottom: 12px;
 }
+
 .distribution-total {
   display: flex;
   justify-content: space-between;
@@ -760,20 +803,24 @@ onMounted(() => {
   padding-top: 12px;
   border-top: 1px solid #f0f0f0;
 }
+
 .item-left {
   display: flex;
   align-items: center;
   gap: 8px;
 }
+
 .item-right {
   font-weight: 500;
 }
+
 .color-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   display: inline-block;
 }
+
 .color-dot.red { background: #dc2626; }
 .color-dot.orange { background: #ea580c; }
 .color-dot.green { background: #059669; }
@@ -791,6 +838,7 @@ onMounted(() => {
   padding: 20px;
   color: #999;
 }
+
 .loading-spinner-small {
   width: 16px;
   height: 16px;
@@ -804,6 +852,7 @@ onMounted(() => {
   text-align: center;
   padding: 50px;
 }
+
 .loading-spinner {
   width: 40px;
   height: 40px;
@@ -827,6 +876,7 @@ onMounted(() => {
   justify-content: center;
   z-index: 999;
 }
+
 .detail-content {
   background: #fff;
   border-radius: 10px;
@@ -834,28 +884,33 @@ onMounted(() => {
   width: 100%;
   padding: 20px;
 }
+
 .detail-header {
   display: flex;
   justify-content: space-between;
   margin-bottom: 20px;
 }
+
 .close-btn {
   background: none;
   border: none;
   font-size: 22px;
   cursor: pointer;
 }
+
 .info-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
   margin-bottom: 20px;
 }
+
 .image-wrapper {
   border: 1px dashed #eee;
   padding: 20px;
   text-align: center;
 }
+
 .detail-image {
   max-width: 100%;
   max-height: 400px;
@@ -870,6 +925,7 @@ onMounted(() => {
   justify-content: center;
   z-index: 1000;
 }
+
 .edit-content {
   background: #fff;
   border-radius: 10px;
@@ -877,29 +933,35 @@ onMounted(() => {
   width: 100%;
   overflow: hidden;
 }
+
 .edit-header {
   padding: 16px 24px;
   border-bottom: 1px solid #f0f0f0;
   display: flex;
   justify-content: space-between;
 }
+
 .edit-body {
   padding: 24px;
 }
+
 .form-item {
   margin-bottom: 16px;
 }
+
 .form-item label {
   display: block;
   margin-bottom: 6px;
   font-weight: 500;
 }
+
 .form-input {
   width: 100%;
   padding: 8px 12px;
   border: 1px solid #ddd;
   border-radius: 4px;
 }
+
 .edit-footer {
   padding: 16px 24px;
   border-top: 1px solid #f0f0f0;
@@ -907,6 +969,7 @@ onMounted(() => {
   justify-content: flex-end;
   gap: 10px;
 }
+
 .btn-cancel {
   padding: 6px 14px;
   border: 1px solid #ddd;
@@ -914,6 +977,7 @@ onMounted(() => {
   background: #fff;
   cursor: pointer;
 }
+
 .btn-save {
   padding: 6px 14px;
   border: none;

@@ -8,11 +8,11 @@
           <h1>工作人员管理</h1>
         </div>
 
-        <!-- 操作栏（新增部门筛选下拉框） -->
+        <!-- 操作栏 -->
         <div class="action-bar">
           <button class="btn-primary" @click="showAddPage">➕ 新增人员</button>
 
-          <!-- 新增：搜索区域组合（关键词+部门） -->
+          <!-- 搜索区域 -->
           <div class="search-group">
             <div class="search-box">
               <span class="search-icon">🔍</span>
@@ -45,7 +45,7 @@
               <th style="width: 200px;">邮箱</th>
               <th style="width: 100px;">累计违规</th>
               <th style="width: 100px;">待处理</th>
-              <th style="width: 100px;">操作</th>
+              <th style="width: 150px;">操作</th>
             </tr>
             </thead>
             <tbody>
@@ -61,6 +61,7 @@
                 <div class="action-buttons">
                   <button class="btn-icon" title="编辑" @click="showEditPage(person)">✏️</button>
                   <button class="btn-icon" title="删除" @click="showDeleteModal(person)">🗑️</button>
+                  <button class="btn-icon" title="查看违规记录" @click="showViolationRecords(person)">📋</button>
                 </div>
               </td>
             </tr>
@@ -139,6 +140,115 @@
       <PersonnelUpdate :person="currentEditPerson" @back-to-list="showListPage" />
     </div>
 
+    <!-- 违规记录弹窗 -->
+    <div class="modal-mask" v-if="violationModalVisible" @click.self="closeViolationModal">
+      <div class="violation-modal-container">
+        <div class="modal-header">
+          <h3>违规记录 - {{ currentPerson.pName }}</h3>
+          <button class="modal-close-btn" @click="closeViolationModal">×</button>
+        </div>
+        <div class="modal-body">
+          <!-- 统计卡片 -->
+          <div class="stats-cards">
+            <div class="stat-card total">
+              <div class="stat-value">{{ violationRecords.length }}</div>
+              <div class="stat-label">总违规次数</div>
+            </div>
+            <div class="stat-card pending">
+              <div class="stat-value">{{ violationRecords.filter(v => v.status === 0).length }}</div>
+              <div class="stat-label">待处理</div>
+            </div>
+            <div class="stat-card processed">
+              <div class="stat-value">{{ violationRecords.filter(v => v.status === 1).length }}</div>
+              <div class="stat-label">已处理</div>
+            </div>
+          </div>
+
+          <!-- 违规记录表格 -->
+          <div class="violation-table-container" v-if="violationRecords.length > 0">
+            <table class="violation-records-table">
+              <thead>
+              <tr>
+                <th>序号</th>
+                <th>违规时间</th>
+                <th>违规类型</th>
+                <th>状态</th>
+                <th>操作</th>
+              </tr>
+              </thead>
+              <tbody>
+              <tr v-for="(record, index) in violationRecords" :key="record.did">
+                <td>{{ index + 1 }}</td>
+                <td>{{ formatTime(record.createdAt) }}</td>
+                <td>
+                  <span class="violation-type-tag">{{ getViolationTypeName(record.vid) }}</span>
+                </td>
+                <td>
+                    <span :class="['status-tag', record.status === 0 ? 'pending' : 'processed']">
+                      {{ record.status === 0 ? '待处理' : '已处理' }}
+                    </span>
+                </td>
+                <td>
+                  <button class="view-detail-btn" @click="viewRecordDetail(record)">查看详情</button>
+                </td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-else class="empty-violation">
+            <span class="empty-icon">✅</span>
+            <p>该人员暂无违规记录</p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn cancel-btn" @click="closeViolationModal">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 违规记录详情弹窗 -->
+    <div class="modal-mask" v-if="recordDetailVisible" @click.self="closeRecordDetail">
+      <div class="record-detail-container">
+        <div class="modal-header">
+          <h3>违规详情 #{{ currentRecord.did }}</h3>
+          <button class="modal-close-btn" @click="closeRecordDetail">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="detail-info-grid">
+            <div class="detail-item">
+              <label>违规类型：</label>
+              <span class="violation-type-tag">{{ getViolationTypeName(currentRecord.vid) }}</span>
+            </div>
+            <div class="detail-item">
+              <label>违规时间：</label>
+              <span>{{ formatTime(currentRecord.createdAt) }}</span>
+            </div>
+            <div class="detail-item">
+              <label>当前状态：</label>
+              <span :class="['status-tag', currentRecord.status === 0 ? 'pending' : 'processed']">
+                {{ currentRecord.status === 0 ? '待处理' : '已处理' }}
+              </span>
+            </div>
+          </div>
+          <div class="image-preview" v-if="currentRecord.imagePath">
+            <label>现场图片：</label>
+            <img
+                :src="getImageUrl(currentRecord.imagePath)"
+                alt="违规图片"
+                class="violation-image"
+                @error="handleImageError"
+            />
+          </div>
+          <div v-else class="no-image">
+            <span>暂无现场图片</span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn cancel-btn" @click="closeRecordDetail">关闭</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 自定义删除确认弹窗 -->
     <div class="modal-mask" v-if="deleteModalVisible">
       <div class="modal-container">
@@ -162,8 +272,10 @@ import { ref, onMounted, computed } from 'vue'
 // 导入接口
 import { personnelPageService, personnelDeleteService } from '@/api/personnel'
 import { departmentGetAllService } from '@/api/department'
+import { recordGetByPersonnelService } from '@/api/record'
 import PersonnelAdd from './PersonnelAdd.vue'
 import PersonnelUpdate from './PersonnelUpdate.vue'
+
 
 // 核心数据
 const currentView = ref('list')
@@ -172,7 +284,6 @@ const personnelList = ref([])
 const departmentList = ref([])
 const loading = ref(false)
 const searchKeyword = ref('')
-// 新增：选中的部门ID（空=全部部门）
 const selectedDeptId = ref('')
 
 // 分页参数
@@ -180,6 +291,16 @@ const currentPage = ref(1)
 const pageSize = ref(5)
 const totalCount = ref(0)
 const totalPages = ref(0)
+
+// 违规记录弹窗相关
+const violationModalVisible = ref(false)
+const currentPerson = ref({})
+const violationRecords = ref([])
+const recordsLoading = ref(false)
+
+// 违规记录详情弹窗
+const recordDetailVisible = ref(false)
+const currentRecord = ref({})
 
 // 删除弹窗相关
 const deleteModalVisible = ref(false)
@@ -216,6 +337,44 @@ const getDepartmentName = (deptId) => {
   return dept ? (dept.deName || dept.name) : '未分配'
 }
 
+// 获取违规类型名称
+const getViolationTypeName = (vid) => {
+  const typeMap = {
+    1: '未佩戴安全帽',
+    2: '未佩戴口罩',
+    3: '未穿反光衣',
+    4: '违规操作',
+    5: '违规吸烟',
+    6: '违规使用手机'
+  }
+  return typeMap[vid] || `类型${vid}`
+}
+
+// 格式化时间
+const formatTime = (s) => {
+  if (!s) return '未知'
+  try {
+    return new Date(s).toLocaleString('zh-CN', {
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit'
+    }).replace(/\//g, '-')
+  } catch {
+    return '未知'
+  }
+}
+
+// 获取图片URL
+const getImageUrl = (path) => {
+  if (!path) return ''
+  if (path.startsWith('http')) return path
+  return `/image/result-image?path=${encodeURIComponent(path)}`
+}
+
+const handleImageError = (e) => {
+  e.target.src = ''
+  e.target.alt = '图片加载失败'
+}
+
 // 获取部门列表
 const fetchDepartmentList = async () => {
   try {
@@ -227,16 +386,15 @@ const fetchDepartmentList = async () => {
   }
 }
 
-// 核心修改：获取分页数据（新增部门筛选参数）
+// 获取分页数据
 const fetchPersonnelPage = async () => {
   loading.value = true
   try {
-    // 传递关键词 + 部门ID 给后端
     const res = await personnelPageService({
       pageNum: currentPage.value,
       pageSize: pageSize.value,
       keyword: searchKeyword.value.trim(),
-      deptId: selectedDeptId.value // 新增：部门筛选参数
+      deptId: selectedDeptId.value
     })
 
     if (res && res.code === 200) {
@@ -260,6 +418,70 @@ const fetchPersonnelPage = async () => {
   }
 }
 
+// 获取人员的违规记录（适配字段名：id->did, personnelId->pid, violationTypeId->vid）
+const fetchViolationRecords = async (pid) => {
+  recordsLoading.value = true
+  try {
+    const res = await recordGetByPersonnelService(pid)
+    console.log('接口返回原始数据:', res)
+
+    // 处理返回数据，适配字段名
+    let records = []
+    if (res && res.code === 200) {
+      records = res.data || []
+    } else if (Array.isArray(res)) {
+      records = res
+    } else if (res && res.data && Array.isArray(res.data)) {
+      records = res.data
+    }
+
+    // 统一字段名转换：id -> did, personnelId -> pid, violationTypeId -> vid
+    violationRecords.value = records.map(record => ({
+      did: record.id || record.did,
+      pid: record.personnelId || record.pid,
+      vid: record.violationTypeId || record.vid,
+      imagePath: record.imagePath,
+      createdAt: record.createdAt,
+      status: record.status
+    }))
+
+    console.log('转换后的违规记录:', violationRecords.value)
+
+  } catch (error) {
+    console.error('获取违规记录失败:', error)
+    violationRecords.value = []
+    alert('获取违规记录失败')
+  } finally {
+    recordsLoading.value = false
+  }
+}
+
+// 显示违规记录弹窗
+const showViolationRecords = async (person) => {
+  currentPerson.value = person
+  violationModalVisible.value = true
+  await fetchViolationRecords(person.pid)
+}
+
+// 关闭违规记录弹窗
+const closeViolationModal = () => {
+  violationModalVisible.value = false
+  currentPerson.value = {}
+  violationRecords.value = []
+}
+
+// 查看违规记录详情
+const viewRecordDetail = (record) => {
+  currentRecord.value = record
+  recordDetailVisible.value = true
+}
+
+// 关闭记录详情弹窗
+const closeRecordDetail = () => {
+  recordDetailVisible.value = false
+  currentRecord.value = {}
+}
+
 // 分页事件
 const handlePageChange = (page) => {
   if (page < 1 || page > totalPages.value) return
@@ -272,9 +494,9 @@ const handleSizeChange = () => {
   fetchPersonnelPage()
 }
 
-// 搜索处理（关键词/部门变化都触发）
+// 搜索处理
 const handleSearch = () => {
-  currentPage.value = 1 // 搜索后重置到第一页
+  currentPage.value = 1
   fetchPersonnelPage()
 }
 
@@ -377,7 +599,6 @@ onMounted(() => {
   gap: 15px;
 }
 
-/* 新增：搜索组合区域样式 */
 .search-group {
   display: flex;
   align-items: center;
@@ -429,30 +650,6 @@ onMounted(() => {
 }
 
 .search-box input:focus {
-  outline: none;
-  border-color: #667eea;
-  background: white;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-/* 新增：部门筛选下拉框样式 */
-.dept-select {
-  width: 180px;
-}
-
-.dept-select select {
-  width: 100%;
-  padding: 12px 10px;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  font-size: 15px;
-  color: #666;
-  background: #fafafa;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.dept-select select:focus {
   outline: none;
   border-color: #667eea;
   background: white;
@@ -538,7 +735,6 @@ onMounted(() => {
   width: 32px;
   height: 32px;
   border: none;
-  border-radius: 6px;
   background: transparent;
   color: #666;
   font-size: 16px;
@@ -666,33 +862,203 @@ onMounted(() => {
   color: #666;
 }
 
-@media (max-width: 768px) {
-  .personnel-card {
-    padding: 20px;
-  }
-  .action-bar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .search-group {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-  }
-  .search-box input, .dept-select select {
-    width: 100%;
-  }
-  .pagination-wrapper {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  .pagination-right {
-    width: 100%;
-    justify-content: center;
-  }
+/* 违规记录弹窗样式 */
+.violation-modal-container {
+  width: 800px;
+  max-width: 90%;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
 }
 
-/* 自定义删除弹窗样式 */
+.modal-close-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  font-size: 24px;
+  cursor: pointer;
+  color: #999;
+  transition: all 0.2s;
+}
+
+.modal-close-btn:hover {
+  color: #333;
+}
+
+/* 统计卡片 */
+.stats-cards {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.stat-card {
+  flex: 1;
+  text-align: center;
+  padding: 16px;
+  border-radius: 10px;
+  background: #f8f9fa;
+}
+
+.stat-card.total {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.stat-card.pending {
+  background: #fff3e0;
+  color: #e67e22;
+}
+
+.stat-card.processed {
+  background: #e8f8f5;
+  color: #27ae60;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.stat-label {
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+/* 违规记录表格 */
+.violation-table-container {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.violation-records-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.violation-records-table th,
+.violation-records-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.violation-records-table th {
+  background: #f8f9fa;
+  font-weight: 600;
+  color: #555;
+  position: sticky;
+  top: 0;
+}
+
+.violation-type-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  background: #f0f0f0;
+  border-radius: 20px;
+  font-size: 12px;
+  color: #666;
+}
+
+.status-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+}
+
+.status-tag.pending {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.status-tag.processed {
+  background: #d1fae5;
+  color: #047857;
+}
+
+.view-detail-btn {
+  padding: 4px 12px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.view-detail-btn:hover {
+  background: #5a67d8;
+}
+
+.empty-violation {
+  text-align: center;
+  padding: 50px;
+  color: #999;
+}
+
+.empty-icon {
+  font-size: 48px;
+  display: block;
+  margin-bottom: 16px;
+}
+
+/* 违规详情弹窗 */
+.record-detail-container {
+  width: 500px;
+  max-width: 90%;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.detail-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.detail-item label {
+  font-weight: 600;
+  color: #666;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.image-preview {
+  text-align: center;
+}
+
+.image-preview label {
+  font-weight: 600;
+  color: #666;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.violation-image {
+  max-width: 100%;
+  max-height: 300px;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.no-image {
+  text-align: center;
+  padding: 40px;
+  color: #999;
+}
+
+/* 模态框通用样式 */
 .modal-mask {
   position: fixed;
   top: 0;
@@ -716,6 +1082,9 @@ onMounted(() => {
 .modal-header {
   padding: 16px 20px;
   border-bottom: 1px solid #e5e5e5;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .modal-header h3 {
@@ -763,5 +1132,34 @@ onMounted(() => {
 
 .confirm-btn:hover {
   background: #ff7875;
+}
+
+@media (max-width: 768px) {
+  .personnel-card {
+    padding: 20px;
+  }
+  .action-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .search-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .search-box input {
+    width: 100%;
+  }
+  .pagination-wrapper {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .pagination-right {
+    width: 100%;
+    justify-content: center;
+  }
+  .violation-modal-container {
+    width: 95%;
+  }
 }
 </style>
