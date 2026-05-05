@@ -22,6 +22,10 @@
           <span class="nav-icon">⚠️</span>
           <span class="nav-text">违规行为管理</span>
         </a>
+        <a href="#" class="nav-item" :class="{ active: currentView === 'statistics' }" @click.prevent="currentView = 'statistics'">
+          <span class="nav-icon">📊</span>
+          <span class="nav-text">数据统计</span>
+        </a>
         <a href="#" class="nav-item" :class="{ active: currentView === 'datahub-image' }" @click.prevent="currentView = 'datahub-image'">
           <span class="nav-icon">📷</span>
           <span class="nav-text">图片行为检测</span>
@@ -45,6 +49,11 @@
         <ViolationManage />
       </div>
 
+      <!-- 数据统计 -->
+      <div v-else-if="currentView === 'statistics'" class="view-container">
+        <StatisticsPage />
+      </div>
+
       <!-- 图片行为检测 -->
       <div v-else-if="currentView === 'datahub-image'" class="view-container">
         <DataHubImage />
@@ -63,11 +72,12 @@ import { ref } from 'vue'
 // 导入各个功能组件
 import PersonnelFindAll from './PersonnelFindAll.vue'
 import ViolationManage from './ViolationManage.vue'
-import DataHubImage from './DataHubImage.vue'  // 图片检测组件
-import DataHubVideo from './DataHub.vue'  // 视频检测组件
+import StatisticsPage from './StatisticsPage.vue'
+import DataHubImage from './DataHubImage.vue'
+import DataHubVideo from './DataHub.vue'
 
-// 当前显示的视图，默认显示图片检测页面
-const currentView = ref('datahub-image')
+// 当前显示的视图，默认显示数据统计页面
+const currentView = ref('statistics')
 </script>
 
 <script>
@@ -179,7 +189,7 @@ export default {
 /* ===== 右侧主要内容 ===== */
 .main-content {
   flex: 1;
-  padding: 0;  /* 移除默认padding，让子组件占满全屏 */
+  padding: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -187,8 +197,8 @@ export default {
 
 .view-container {
   width: 100%;
-  height: 100vh;  /* 占满整个视口高度 */
-  overflow: hidden;  /* 防止子组件溢出 */
+  height: 100vh;
+  overflow: hidden;
 }
 
 /* 响应式 */
