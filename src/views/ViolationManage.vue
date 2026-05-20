@@ -23,6 +23,10 @@
         <button class="btn-header" @click="resetFilters">
           <span class="icon">🔄</span> 重置
         </button>
+        <button class="btn-header btn-export" @click="exportToExcel" :disabled="exportLoading">
+          <span class="icon">📊</span>
+          {{ exportLoading ? '导出中...' : '导出Excel' }}
+        </button>
       </div>
       <div class="filter-right">
         <div class="search-box">
@@ -169,7 +173,7 @@
       </div>
     </div>
 
-    <!-- 详情弹窗（保持原样） -->
+    <!-- 详情弹窗 -->
     <div class="detail-modal" v-if="detailVisible" @click.self="closeDetailModal">
       <div class="detail-content" @click.stop>
         <div class="detail-header">
@@ -273,6 +277,7 @@ const pageSize = ref(5)
 const totalPages = ref(1)
 const typeList = ref([])
 const personnelList = ref([])
+const exportLoading = ref(false)
 
 const currentPageData = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value
@@ -317,6 +322,60 @@ const editForm = reactive({
 })
 
 const emailLoading = ref(null)
+
+// 导出Excel
+const exportToExcel = async () => {
+  exportLoading.value = true
+
+  try {
+    const params = []
+
+    if (filters.status !== '') {
+      params.push(`status=${filters.status}`)
+    }
+    if (filters.startDate) {
+      params.push(`startTime=${filters.startDate}`)
+    }
+    if (filters.endDate) {
+      params.push(`endTime=${filters.endDate}`)
+    }
+    if (filters.keyword && filters.keyword.trim()) {
+      params.push(`keyword=${encodeURIComponent(filters.keyword.trim())}`)
+    }
+
+    const queryString = params.length > 0 ? '?' + params.join('&') : ''
+    const url = `http://localhost:8081/record/detectionRecords${queryString}`
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error('导出失败')
+    }
+
+    const blob = await response.blob()
+    const downloadUrl = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = `违规检测记录_${Date.now()}.xlsx`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(downloadUrl)
+
+    alert('导出成功')
+
+  } catch (error) {
+    console.error('导出失败:', error)
+    alert('导出失败：' + error.message)
+  } finally {
+    exportLoading.value = false
+  }
+}
 
 const loadTypeList = async () => {
   try {
@@ -596,6 +655,21 @@ onMounted(() => {
 
 .email-btn:disabled {
   opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-export {
+  background: #52c41a;
+  color: white;
+  border: none;
+}
+
+.btn-export:hover:not(:disabled) {
+  background: #73d13d;
+}
+
+.btn-export:disabled {
+  opacity: 0.6;
   cursor: not-allowed;
 }
 

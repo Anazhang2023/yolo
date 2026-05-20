@@ -404,14 +404,15 @@ const updateLineChart = () => {
         fill: true,
         pointBackgroundColor: '#667eea',
         pointBorderColor: '#fff',
-        pointRadius: 4,
-        pointHoverRadius: 6
+        pointRadius: 3,
+        pointHoverRadius: 5
       }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: true,
       plugins: {
+        legend: { labels: { font: { size: 11 } } },
         tooltip: { mode: 'index', intersect: false }
       }
     }
@@ -438,7 +439,7 @@ const updatePieChart = () => {
       responsive: true,
       maintainAspectRatio: true,
       plugins: {
-        legend: { position: 'right' },
+        legend: { position: 'right', labels: { font: { size: 10, boxWidth: 10 } } },
         tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${ctx.raw}次 (${((ctx.raw / data.reduce((a,b)=>a+b,0))*100).toFixed(1)}%)` } }
       }
     }
@@ -466,7 +467,7 @@ const updateDoughnutChart = () => {
       responsive: true,
       maintainAspectRatio: true,
       plugins: {
-        legend: { position: 'bottom' },
+        legend: { position: 'bottom', labels: { font: { size: 11 } } },
         tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${ctx.raw}次 (${((ctx.raw / data.reduce((a,b)=>a+b,0))*100).toFixed(1)}%)` } }
       }
     }
@@ -486,12 +487,12 @@ const updateMultiLineChart = () => {
       responsive: true,
       maintainAspectRatio: true,
       plugins: {
-        legend: { position: 'bottom', labels: { font: { size: 12, weight: 'bold' } } },
+        legend: { position: 'bottom', labels: { font: { size: 10, boxWidth: 10 } } },
         tooltip: { mode: 'index', intersect: false }
       },
       scales: {
-        y: { beginAtZero: true, title: { display: true, text: '违规次数' } },
-        x: { title: { display: true, text: '日期' } }
+        y: { beginAtZero: true, title: { display: true, text: '违规次数', font: { size: 11 } } },
+        x: { title: { display: true, text: '日期', font: { size: 11 } }, ticks: { font: { size: 10 } } }
       }
     }
   })
@@ -530,62 +531,63 @@ onUnmounted(() => {
   destroyCharts()
 })
 </script>
-
 <style scoped>
 .statistics-container {
   min-height: 100vh;
   background: #f0f2f5;
-  padding: 24px;
+  padding: 12px;
   overflow-y: auto;
 }
 
 .statistics-header {
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 12px;
 }
 
 .statistics-header h1 {
-  font-size: 28px;
+  font-size: 18px;
   color: #333;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .statistics-header p {
   color: #666;
-  font-size: 14px;
+  font-size: 10px;
 }
 
 /* 筛选栏 */
 .filter-bar {
   background: white;
-  border-radius: 12px;
-  padding: 16px 20px;
-  margin-bottom: 24px;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
   display: flex;
-  gap: 20px;
+  gap: 10px;
   flex-wrap: wrap;
   align-items: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
 }
 
 .filter-group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
 }
 
 .filter-group label {
   font-weight: 500;
   color: #555;
+  font-size: 11px;
 }
 
 .filter-group select {
-  padding: 8px 12px;
+  padding: 5px 8px;
   border: 1px solid #ddd;
-  border-radius: 6px;
+  border-radius: 4px;
   background: white;
   cursor: pointer;
   outline: none;
+  font-size: 11px;
 }
 
 .filter-group select:focus {
@@ -593,13 +595,14 @@ onUnmounted(() => {
 }
 
 .refresh-btn {
-  padding: 8px 16px;
+  padding: 5px 12px;
   background: #667eea;
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 4px;
   cursor: pointer;
   transition: all 0.3s;
+  font-size: 11px;
 }
 
 .refresh-btn:hover {
@@ -611,32 +614,32 @@ onUnmounted(() => {
 .stats-cards-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-  margin-bottom: 24px;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
 .stat-card {
   background: white;
-  border-radius: 16px;
-  padding: 20px;
+  border-radius: 8px;
+  padding: 8px 10px;
   display: flex;
   align-items: center;
-  gap: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  gap: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
   transition: transform 0.2s;
 }
 
 .stat-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
-.stat-card-blue { border-left: 4px solid #667eea; }
-.stat-card-orange { border-left: 4px solid #f39c12; }
-.stat-card-green { border-left: 4px solid #27ae60; }
-.stat-card-purple { border-left: 4px solid #9b59b6; }
+.stat-card-blue { border-left: 2px solid #667eea; }
+.stat-card-orange { border-left: 2px solid #f39c12; }
+.stat-card-green { border-left: 2px solid #27ae60; }
+.stat-card-purple { border-left: 2px solid #9b59b6; }
 
 .stat-icon {
-  font-size: 42px;
+  font-size: 24px;
 }
 
 .stat-info {
@@ -644,15 +647,15 @@ onUnmounted(() => {
 }
 
 .stat-value {
-  font-size: 32px;
+  font-size: 20px;
   font-weight: bold;
   color: #333;
 }
 
 .stat-label {
-  font-size: 14px;
+  font-size: 9px;
   color: #666;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 /* 图表切换按钮 */
@@ -660,21 +663,21 @@ onUnmounted(() => {
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 30px;
-  padding: 12px;
+  gap: 8px;
+  margin-bottom: 15px;
+  padding: 8px;
   background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
 }
 
 .tab-btn {
-  padding: 12px 24px;
+  padding: 6px 14px;
   border: none;
-  border-radius: 8px;
+  border-radius: 5px;
   background: #f5f5f5;
   color: #666;
-  font-size: 15px;
+  font-size: 11px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s;
@@ -682,13 +685,13 @@ onUnmounted(() => {
 
 .tab-btn:hover {
   background: #e0e0e0;
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 .tab-btn.active {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
 /* 图表展示区域 */
@@ -696,24 +699,24 @@ onUnmounted(() => {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 500px;
+  min-height: 300px;
 }
 
 .chart-card {
   width: 100%;
-  max-width: 1000px;
+  max-width: 600px;
   margin: 0 auto;
   background: white;
-  border-radius: 20px;
-  padding: 24px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  animation: fadeIn 0.5s ease;
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  animation: fadeIn 0.3s ease;
 }
 
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -723,29 +726,29 @@ onUnmounted(() => {
 
 .chart-header {
   text-align: center;
-  margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 2px solid #f0f0f0;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .chart-header h3 {
-  font-size: 22px;
+  font-size: 13px;
   color: #333;
-  margin-bottom: 8px;
+  margin-bottom: 3px;
 }
 
 .chart-subtitle {
-  font-size: 14px;
+  font-size: 10px;
   color: #999;
 }
 
 .chart-body {
-  height: 450px;
+  height: 280px;
   position: relative;
 }
 
 .chart-body-wide {
-  height: 500px;
+  height: 300px;
 }
 
 /* 未点击时的占位符 */
@@ -754,21 +757,21 @@ onUnmounted(() => {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  min-height: 400px;
+  min-height: 250px;
   background: white;
-  border-radius: 20px;
-  margin-top: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border-radius: 10px;
+  margin-top: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
 }
 
 .placeholder-icon {
-  font-size: 80px;
-  margin-bottom: 20px;
+  font-size: 48px;
+  margin-bottom: 10px;
   opacity: 0.5;
 }
 
 .placeholder-text {
-  font-size: 18px;
+  font-size: 12px;
   color: #999;
 }
 
@@ -778,13 +781,13 @@ onUnmounted(() => {
     grid-template-columns: repeat(2, 1fr);
   }
   .chart-body {
-    height: 380px;
+    height: 260px;
   }
 }
 
 @media (max-width: 768px) {
   .statistics-container {
-    padding: 16px;
+    padding: 10px;
   }
   .stats-cards-row {
     grid-template-columns: 1fr;
@@ -792,6 +795,7 @@ onUnmounted(() => {
   .filter-bar {
     flex-direction: column;
     align-items: stretch;
+    gap: 8px;
   }
   .filter-group {
     justify-content: space-between;
@@ -800,23 +804,27 @@ onUnmounted(() => {
     flex: 1;
   }
   .chart-tabs {
-    gap: 8px;
+    gap: 5px;
   }
   .tab-btn {
-    padding: 8px 16px;
-    font-size: 13px;
+    padding: 5px 10px;
+    font-size: 10px;
   }
   .chart-body {
-    height: 280px;
+    height: 220px;
+  }
+  .chart-card {
+    max-width: 100%;
+    padding: 10px;
   }
   .chart-header h3 {
-    font-size: 18px;
+    font-size: 12px;
   }
   .placeholder-icon {
-    font-size: 60px;
+    font-size: 40px;
   }
   .placeholder-text {
-    font-size: 16px;
+    font-size: 11px;
   }
 }
 </style>
